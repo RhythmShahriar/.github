@@ -40,5 +40,5 @@ Mark breaking changes with `!`, e.g. `feat(cli)!: rename --list to --targets`, a
 ## Checks
 
 A new check is a YAML file plus a `_test.yaml` fixture with positive and negative cases.
-See [tuner/docs/checks.md](https://github.com/RhythmShahriar/tuner/blob/master/docs/checks.md).
+See [Writing checks](https://github.com/RhythmShahriar/rhythm/wiki/Tuner-Writing-Checks) in the documentation wiki.
 Tuner detects and never exploits: no payloads, and secrets are always masked.
