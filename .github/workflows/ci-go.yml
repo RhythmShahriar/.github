@@ -1,7 +1,7 @@
 # Reusable Go CI: format, vet, lint, race tests and a build.
 #   jobs:
 #     go:
-#       uses: RhythmShahriar/.github/.github/workflows/ci-go.yml@main
+#       uses: RhythmShahriar/.github/.github/workflows/ci-go.yml@master
 #       with:
 #         rhythm-kit: true   # products that import github.com/RhythmShahriar/rhythm/kit
 name: ci-go

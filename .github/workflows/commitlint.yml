@@ -3,7 +3,7 @@
 # title (the title becomes the commit message on squash merge).
 #   jobs:
 #     commitlint:
-#       uses: RhythmShahriar/.github/.github/workflows/commitlint.yml@main
+#       uses: RhythmShahriar/.github/.github/workflows/commitlint.yml@master
 name: commitlint
 on:
   workflow_call:
