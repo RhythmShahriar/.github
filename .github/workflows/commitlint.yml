@@ -1,0 +1,33 @@
+# Reusable Conventional Commits check. It runs the calling repo's own
+# .githooks/commit-msg on every commit in a pull request and on the PR
+# title (the title becomes the commit message on squash merge).
+#   jobs:
+#     commitlint:
+#       uses: RhythmShahriar/.github/.github/workflows/commitlint.yml@main
+name: commitlint
+on:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  commitlint:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check commit messages and PR title
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          status=0
+          for sha in $(git rev-list --no-merges "$BASE..$HEAD"); do
+            git log -1 --format=%B "$sha" > "$RUNNER_TEMP/msg"
+            sh .githooks/commit-msg "$RUNNER_TEMP/msg" || { echo "  ↳ in commit $sha"; status=1; }
+          done
+          printf '%s\n' "$TITLE" > "$RUNNER_TEMP/title"
+          sh .githooks/commit-msg "$RUNNER_TEMP/title" || { echo "  ↳ in the pull request title"; status=1; }
+          exit $status

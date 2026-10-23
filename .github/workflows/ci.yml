@@ -1,0 +1,6 @@
+name: ci
+on:
+  pull_request:
+jobs:
+  commitlint:
+    uses: ./.github/workflows/commitlint.yml

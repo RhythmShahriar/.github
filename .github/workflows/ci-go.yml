@@ -1,0 +1,40 @@
+# Reusable Go CI: format, vet, lint, race tests and a build.
+#   jobs:
+#     go:
+#       uses: RhythmShahriar/.github/.github/workflows/ci-go.yml@main
+#       with:
+#         rhythm-kit: true   # products that import github.com/RhythmShahriar/rhythm/kit
+name: ci-go
+on:
+  workflow_call:
+    inputs:
+      rhythm-kit:
+        description: Check out RhythmShahriar/rhythm and link it with go.work, until the kit is tagged.
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        if: inputs.rhythm-kit
+        with:
+          repository: RhythmShahriar/rhythm
+          path: _rhythm
+      - name: Link the kit
+        if: inputs.rhythm-kit
+        run: go work init . ./_rhythm
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: test -z "$(gofmt -l $(git ls-files '*.go'))" || { gofmt -l $(git ls-files '*.go'); exit 1; }
+      - run: go vet ./...
+      - uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.15.0
+      - run: go test -race ./...
+      - run: go build ./...
