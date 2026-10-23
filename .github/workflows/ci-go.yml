@@ -38,3 +38,13 @@ jobs:
           version: v2.15.0
       - run: go test -race ./...
       - run: go build ./...
+      - name: shellcheck
+        run: |
+          files=$(git ls-files '*.sh' '.githooks/*')
+          [ -z "$files" ] || shellcheck $files
+      - name: goreleaser check
+        if: hashFiles('.goreleaser.yaml') != ''
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: check

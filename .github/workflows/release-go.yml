@@ -1,24 +1,47 @@
-# Reusable release workflow. Call from a product repo with:
+# Reusable release: GoReleaser builds every platform, publishes a GitHub
+# release with checksums.txt, and signs it with keyless cosign.
+#   on:
+#     push:
+#       tags: ["v*"]
 #   jobs:
 #     release:
 #       uses: RhythmShahriar/.github/.github/workflows/release-go.yml@main
+#       permissions:
+#         contents: write
+#         id-token: write
+#       with:
+#         rhythm-kit: true   # until github.com/RhythmShahriar/rhythm is tagged and required
 name: release-go
 on:
   workflow_call:
+    inputs:
+      rhythm-kit:
+        description: Link RhythmShahriar/rhythm with go.work (kept outside the repo so the tree stays clean).
+        type: boolean
+        default: false
+permissions:
+  contents: write
+  id-token: write # keyless cosign signing
 jobs:
   release:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
-          go-version: stable
+          go-version-file: go.mod
+      - name: Link the kit
+        if: inputs.rhythm-kit
+        run: |
+          git clone --depth 1 https://github.com/RhythmShahriar/rhythm "$RUNNER_TEMP/rhythm"
+          cd "$RUNNER_TEMP" && go work init "$GITHUB_WORKSPACE" "$RUNNER_TEMP/rhythm"
+          echo "GOWORK=$RUNNER_TEMP/go.work" >> "$GITHUB_ENV"
+      - uses: sigstore/cosign-installer@v3
       - uses: goreleaser/goreleaser-action@v6
         with:
+          version: "~> v2"
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
