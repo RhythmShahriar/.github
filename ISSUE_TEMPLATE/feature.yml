@@ -1,0 +1,8 @@
+name: Feature / check request
+description: Suggest a feature or a new check
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes: { label: Idea }
+    validations: { required: true }

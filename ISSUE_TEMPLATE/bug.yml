@@ -1,0 +1,12 @@
+name: Bug report
+description: Something isn't working
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes: { label: Version, placeholder: "rhythm version" }
+    validations: { required: true }
+  - type: textarea
+    id: what
+    attributes: { label: What happened, description: Steps, expected vs actual }
+    validations: { required: true }
