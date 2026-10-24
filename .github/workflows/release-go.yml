@@ -2,7 +2,9 @@
 # SPDX-License-Identifier: MIT
 
 # Reusable release: GoReleaser builds every platform, publishes a GitHub
-# release with checksums.txt and signs it with keyless cosign.
+# release with checksums.txt and signs it with keyless cosign. Every action
+# and tool is pinned to an exact version (actions by commit SHA), so a moved
+# tag upstream can't change what signs a release.
 #   on:
 #     push:
 #       tags: ["v*"]
@@ -12,16 +14,12 @@
 #       permissions:
 #         contents: write
 #         id-token: write
-#       with:
-#         rhythm-kit: true   # until github.com/RhythmShahriar/rhythm is tagged and required
+#
+# The kit is a normal go.mod requirement: the release builds exactly the
+# versions go.mod pins, never a checkout of rhythm master.
 name: release-go
 on:
   workflow_call:
-    inputs:
-      rhythm-kit:
-        description: Link RhythmShahriar/rhythm with go.work (kept outside the repo so the tree stays clean).
-        type: boolean
-        default: false
 permissions:
   contents: write
   id-token: write # keyless cosign signing
@@ -29,22 +27,20 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v5
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-      - name: Link the kit
-        if: inputs.rhythm-kit
-        run: |
-          git clone --depth 1 https://github.com/RhythmShahriar/rhythm "$RUNNER_TEMP/rhythm"
-          cd "$RUNNER_TEMP" && go work init "$GITHUB_WORKSPACE" "$RUNNER_TEMP/rhythm"
-          echo "GOWORK=$RUNNER_TEMP/go.work" >> "$GITHUB_ENV"
-      - uses: sigstore/cosign-installer@v3
-      - uses: goreleaser/goreleaser-action@v6
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         with:
-          version: "~> v2"
+          cosign-release: v3.0.6
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          version: v2.18.3
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOWORK: "off"
