@@ -83,8 +83,13 @@ jobs:
         env:
           BENCH: ${{ inputs.bench }}
           BENCH_PACKAGES: ${{ inputs.bench-packages }}
-        # BENCH_PACKAGES is split on spaces on purpose: it may list several packages.
-        run: go test -run '^$' -bench "$BENCH" -benchtime 1x $BENCH_PACKAGES
+        # BENCH_PACKAGES is split on spaces on purpose: it may list several
+        # packages. go test passes when the regexp matches no benchmark, so a
+        # renamed or missing one gets a warning instead of a silent pass.
+        run: |
+          go test -run '^$' -bench "$BENCH" -benchtime 1x $BENCH_PACKAGES | tee bench.out
+          grep -q '^Benchmark' bench.out ||
+            echo "::warning title=benchmark::no benchmark matches '$BENCH' in $BENCH_PACKAGES"
       - name: shellcheck
         if: runner.os == 'Linux'
         run: |
