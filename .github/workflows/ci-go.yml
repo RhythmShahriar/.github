@@ -23,6 +23,10 @@ on:
         description: Check the writing rules (no em dashes, no comma before "and" or "but") with scripts/check-style.py.
         type: boolean
         default: false
+      kit-pin-check:
+        description: Fail when go.mod pins github.com/RhythmShahriar/rhythm more than one minor release behind the latest tag. Skipped when go.mod doesn't require the kit.
+        type: boolean
+        default: true
       bench:
         description: Benchmark regexp to run once (go test -run '^$' -bench <regexp> -benchtime 1x). Empty skips it.
         type: string
@@ -100,7 +104,7 @@ jobs:
             exit 1
           fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: runner.os == 'Linux' && inputs.style
+        if: runner.os == 'Linux' && (inputs.style || inputs.kit-pin-check)
         with:
           repository: RhythmShahriar/.github
           ref: ${{ inputs.tools-ref }}
@@ -109,6 +113,9 @@ jobs:
       - name: writing style
         if: runner.os == 'Linux' && inputs.style
         run: python3 _rhythm_ci/scripts/check-style.py .
+      - name: kit pin
+        if: runner.os == 'Linux' && inputs.kit-pin-check
+        run: sh _rhythm_ci/scripts/check-kit-pin.sh go.mod
       - name: goreleaser check
         if: runner.os == 'Linux' && hashFiles('.goreleaser.yaml') != ''
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
