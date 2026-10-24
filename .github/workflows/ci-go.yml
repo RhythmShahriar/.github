@@ -12,6 +12,10 @@ on:
         description: Check out RhythmShahriar/rhythm and link it with go.work, until the kit is tagged.
         type: boolean
         default: false
+      style:
+        description: Check the writing rules (no em dashes, no comma before "and" or "but") with scripts/check-style.py.
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -42,6 +46,14 @@ jobs:
         run: |
           files=$(git ls-files '*.sh' '.githooks/*')
           [ -z "$files" ] || shellcheck $files
+      - uses: actions/checkout@v4
+        if: inputs.style
+        with:
+          repository: RhythmShahriar/.github
+          path: _rhythm_style
+      - name: writing style
+        if: inputs.style
+        run: python3 _rhythm_style/scripts/check-style.py .
       - name: goreleaser check
         if: hashFiles('.goreleaser.yaml') != ''
         uses: goreleaser/goreleaser-action@v6

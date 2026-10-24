@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping! Open an issue first for big changes, and keep PRs focused.
+Thanks for helping! Open an issue first for big changes and keep PRs focused.
 
 ## Setup
 
@@ -34,11 +34,11 @@ Optional body explaining why, after a blank line.
 | `style` | formatting only |
 | `revert` | reverting an earlier commit |
 
-Mark breaking changes with `!`, e.g. `feat(cli)!: rename --list to --targets`, and explain them in a
+Mark breaking changes with `!`, e.g. `feat(cli)!: rename --list to --targets`. Explain them in a
 `BREAKING CHANGE:` footer.
 
 ## Checks
 
 A new check is a YAML file plus a `_test.yaml` fixture with positive and negative cases.
 See [Writing checks](https://github.com/RhythmShahriar/rhythm/wiki/Tuner-Writing-Checks) in the documentation wiki.
-Tuner detects and never exploits: no payloads, and secrets are always masked.
+Tuner detects and never exploits: no payloads. Secrets are always masked.

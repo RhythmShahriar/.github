@@ -1,5 +1,5 @@
 # Reusable release: GoReleaser builds every platform, publishes a GitHub
-# release with checksums.txt, and signs it with keyless cosign.
+# release with checksums.txt and signs it with keyless cosign.
 #   on:
 #     push:
 #       tags: ["v*"]
