@@ -69,7 +69,11 @@ jobs:
           go-version-file: go.mod
       - name: gofmt
         if: runner.os == 'Linux'
-        run: test -z "$(gofmt -l $(git ls-files '*.go'))" || { gofmt -l $(git ls-files '*.go'); exit 1; }
+        # The file list is split on whitespace on purpose: Go file names in
+        # these repositories never contain spaces.
+        run: |
+          # shellcheck disable=SC2046
+          test -z "$(gofmt -l $(git ls-files '*.go'))" || { gofmt -l $(git ls-files '*.go'); exit 1; }
       - run: go vet ./...
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         if: runner.os == 'Linux'
@@ -87,13 +91,16 @@ jobs:
         # packages. go test passes when the regexp matches no benchmark, so a
         # renamed or missing one gets a warning instead of a silent pass.
         run: |
+          # shellcheck disable=SC2086
           go test -run '^$' -bench "$BENCH" -benchtime 1x $BENCH_PACKAGES | tee bench.out
           grep -q '^Benchmark' bench.out ||
             echo "::warning title=benchmark::no benchmark matches '$BENCH' in $BENCH_PACKAGES"
       - name: shellcheck
         if: runner.os == 'Linux'
         run: |
+          # Split on whitespace on purpose: script names never contain spaces.
           files=$(git ls-files '*.sh' '.githooks/*')
+          # shellcheck disable=SC2086
           [ -z "$files" ] || shellcheck $files
       - name: actionlint
         if: runner.os == 'Linux' && hashFiles('.github/workflows/*.yml', '.github/workflows/*.yaml') != ''
