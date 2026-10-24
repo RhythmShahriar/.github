@@ -108,6 +108,29 @@ expect 0 "latest v0.10.1"
 block v0.8.2
 expect 1 "v0.8.2 but the latest is v0.10.1"
 
+# A failed ls-remote is retried once. The git stub fails the first
+# $GIT_FAILS calls, then runs the real git.
+mkdir "$tmp/bin"
+real_git=$(command -v git)
+cat >"$tmp/bin/git" <<EOF
+#!/bin/sh
+n=\$(cat "$tmp/git.calls" 2>/dev/null || echo 0)
+n=\$((n + 1))
+echo "\$n" >"$tmp/git.calls"
+[ "\$n" -gt "\$GIT_FAILS" ] || { echo "fatal: unable to access" >&2; exit 128; }
+exec "$real_git" "\$@"
+EOF
+chmod +x "$tmp/bin/git"
+export RHYTHM_KIT_RETRY_DELAY=0
+block v0.9.0
+rm -f "$tmp/git.calls"
+PATH="$tmp/bin:$PATH" GIT_FAILS=1 expect 0 "latest v0.10.1"
+[ "$(cat "$tmp/git.calls")" -eq 2 ] || fail "ls-remote ran $(cat "$tmp/git.calls") times after one failure, want 2"
+rm -f "$tmp/git.calls"
+PATH="$tmp/bin:$PATH" GIT_FAILS=2 expect 2 "couldn't list the tags"
+[ "$(cat "$tmp/git.calls")" -eq 2 ] || fail "ls-remote ran $(cat "$tmp/git.calls") times after two failures, want 2"
+unset RHYTHM_KIT_RETRY_DELAY
+
 # A missing go.mod is a usage error.
 rm "$tmp/go.mod"
 expect 2 "not found"

@@ -11,6 +11,8 @@
 # The pin is read from go.mod itself, never from go.work: the release builds
 # with GOWORK=off, so go.mod is what users get. The latest tag comes from
 # `git ls-remote --tags` unless RHYTHM_KIT_LATEST is set (tests and mirrors).
+# A failed ls-remote is retried once after RHYTHM_KIT_RETRY_DELAY seconds
+# (default 5).
 #
 # Exit codes: 0 up to date or no kit requirement, 1 stale pin, 2 usage or
 # lookup error.
@@ -44,9 +46,18 @@ fi
 if [ -n "${RHYTHM_KIT_LATEST:-}" ]; then
 	latest=$RHYTHM_KIT_LATEST
 else
+	# One retry, so a brief GitHub blip doesn't fail CI.
+	if ! refs=$(git ls-remote --tags --refs "$remote" 'v*'); then
+		echo "check-kit-pin: listing the tags at $remote failed; retrying once" >&2
+		sleep "${RHYTHM_KIT_RETRY_DELAY:-5}"
+		if ! refs=$(git ls-remote --tags --refs "$remote" 'v*'); then
+			echo "check-kit-pin: couldn't list the tags at $remote" >&2
+			exit 2
+		fi
+	fi
 	# Release tags only: prereleases (v1.2.0-rc1) and peeled refs (^{}) are
 	# dropped, then the highest version wins.
-	latest=$(git ls-remote --tags --refs "$remote" 'v*' |
+	latest=$(printf '%s\n' "$refs" |
 		sed -n 's|.*refs/tags/\(v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)$|\1|p' |
 		sed 's/^v//' | sort -t. -k1,1n -k2,2n -k3,3n | tail -n 1)
 	[ -z "$latest" ] || latest=v$latest
