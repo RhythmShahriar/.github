@@ -1,65 +1,131 @@
 # Copyright (c) 2026 Rhythm Shahriar <me@rhy.io>
 # SPDX-License-Identifier: MIT
 
-# Reusable Go CI: format, vet, lint, race tests and a build.
+# Reusable Go CI: format, vet, lint, race tests, a build, govulncheck and
+# workflow checks. Every action is pinned to a commit SHA with its version
+# in a trailing comment; Dependabot keeps them current.
 #   jobs:
 #     go:
 #       uses: RhythmShahriar/.github/.github/workflows/ci-go.yml@master
 #       with:
-#         rhythm-kit: true   # products that import github.com/RhythmShahriar/rhythm/kit
+#         os: '["ubuntu-latest", "windows-latest", "macos-latest"]'
+#         bench: Crawl10k        # optional benchmark regexp, run once
+#         bench-packages: ./kit/crawl
 name: ci-go
 on:
   workflow_call:
     inputs:
-      rhythm-kit:
-        description: Check out RhythmShahriar/rhythm and link it with go.work, until the kit is tagged.
-        type: boolean
-        default: false
+      os:
+        description: JSON list of runners for the build and test matrix. gofmt, lint, shellcheck, the workflow checks and goreleaser check run on Linux only.
+        type: string
+        default: '["ubuntu-latest"]'
       style:
         description: Check the writing rules (no em dashes, no comma before "and" or "but") with scripts/check-style.py.
         type: boolean
         default: false
+      bench:
+        description: Benchmark regexp to run once (go test -run '^$' -bench <regexp> -benchtime 1x). Empty skips it.
+        type: string
+        default: ""
+      bench-packages:
+        description: Packages the bench input runs in.
+        type: string
+        default: ./...
+      tools-ref:
+        description: Ref of RhythmShahriar/.github to load the shared scripts (check-style.py, check-kit-pin.sh) from.
+        type: string
+        default: master
 permissions:
   contents: read
+env:
+  ACTIONLINT: github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+  GORELEASER_VERSION: v2.18.3
+  GOVULNCHECK: golang.org/x/vuln/cmd/govulncheck@v1.8.0
 jobs:
   go:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.os) }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        if: inputs.rhythm-kit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: RhythmShahriar/rhythm
-          path: _rhythm
-      - name: Link the kit
-        if: inputs.rhythm-kit
-        run: go work init . ./_rhythm
-      - uses: actions/setup-go@v5
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
       - name: gofmt
+        if: runner.os == 'Linux'
         run: test -z "$(gofmt -l $(git ls-files '*.go'))" || { gofmt -l $(git ls-files '*.go'); exit 1; }
       - run: go vet ./...
-      - uses: golangci/golangci-lint-action@v8
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        if: runner.os == 'Linux'
         with:
           version: v2.15.0
       - run: go test -race ./...
       - run: go build ./...
+      - name: benchmark
+        if: inputs.bench != ''
+        timeout-minutes: 15
+        env:
+          BENCH: ${{ inputs.bench }}
+          BENCH_PACKAGES: ${{ inputs.bench-packages }}
+        # BENCH_PACKAGES is split on spaces on purpose: it may list several packages.
+        run: go test -run '^$' -bench "$BENCH" -benchtime 1x $BENCH_PACKAGES
       - name: shellcheck
+        if: runner.os == 'Linux'
         run: |
           files=$(git ls-files '*.sh' '.githooks/*')
           [ -z "$files" ] || shellcheck $files
-      - uses: actions/checkout@v4
-        if: inputs.style
+      - name: actionlint
+        if: runner.os == 'Linux' && hashFiles('.github/workflows/*.yml', '.github/workflows/*.yaml') != ''
+        run: go run "$ACTIONLINT"
+      - name: pinned actions
+        if: runner.os == 'Linux' && hashFiles('.github/workflows/*.yml', '.github/workflows/*.yaml') != ''
+        # Every third-party action must name a full commit SHA. Local actions
+        # (./) and the shared RhythmShahriar/.github workflows are exempt: the
+        # release signing identity names release-go.yml@refs/heads/master, so
+        # those callers move together with the signing identity cut-over.
+        run: |
+          bad=$(grep -nE '^[[:space:]-]*uses:' .github/workflows/*.y*ml \
+            | grep -vE 'uses:[[:space:]]*"?(\./|RhythmShahriar/\.github/)' \
+            | grep -vE '@[0-9a-f]{40}"?([[:space:]]|$)' || true)
+          if [ -n "$bad" ]; then
+            echo "These uses: lines don't pin a 40-hex commit SHA:"
+            echo "$bad"
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: runner.os == 'Linux' && inputs.style
         with:
           repository: RhythmShahriar/.github
-          path: _rhythm_style
+          ref: ${{ inputs.tools-ref }}
+          path: _rhythm_ci
+          persist-credentials: false
       - name: writing style
-        if: inputs.style
-        run: python3 _rhythm_style/scripts/check-style.py .
+        if: runner.os == 'Linux' && inputs.style
+        run: python3 _rhythm_ci/scripts/check-style.py .
       - name: goreleaser check
-        if: hashFiles('.goreleaser.yaml') != ''
-        uses: goreleaser/goreleaser-action@v6
+        if: runner.os == 'Linux' && hashFiles('.goreleaser.yaml') != ''
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
-          version: "~> v2"
+          version: ${{ env.GORELEASER_VERSION }}
           args: check
+
+  # govulncheck reports only vulnerabilities in code the module actually
+  # calls. It exits non-zero when it finds one. Run it locally with:
+  #   go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+  govulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: go run "$GOVULNCHECK" ./...
