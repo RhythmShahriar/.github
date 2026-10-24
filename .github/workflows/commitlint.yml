@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Rhythm Shahriar <me@rhy.io>
+# SPDX-License-Identifier: MIT
+
 # Reusable Conventional Commits check. It runs the calling repo's own
 # .githooks/commit-msg on every commit in a pull request and on the PR
 # title (the title becomes the commit message on squash merge).

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 """Checks the Rhythm writing rules in a repository's tracked text.
 
-The rules: no em dashes, and no comma before "and" or "but". They cover
+The rules: no em dashes and no comma before "and" or "but". They cover
 docs, help text, messages and comments, so every tracked text file is
 read, except generated output, vendored code and test fixtures.
 
@@ -27,8 +27,8 @@ SKIP_PARTS = {"node_modules", "vendor", "dist", "testdata", "fixtures", ".git"}
 SKIP_NAMES = {"package-lock.json", "pnpm-lock.yaml", "composer.lock", "go.sum"}
 
 RULES = [
-    ("em dash", re.compile("—")),
-    # Across a line break too: "…, and" at a line end followed by text.
+    ("em dash", re.compile("\u2014")),
+    # Across a line break too: a comma at a line end, "and" on the next line.
     ("comma before and/but", re.compile(r",[ \t]*\n?[ \t]*(?:and|but)\b")),
 ]
 
