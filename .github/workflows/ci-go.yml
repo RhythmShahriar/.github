@@ -9,6 +9,7 @@
 #       uses: RhythmShahriar/.github/.github/workflows/ci-go.yml@master
 #       with:
 #         os: '["ubuntu-latest", "windows-latest", "macos-latest"]'
+#         pin-check: true        # every action pinned to a commit SHA
 #         bench: Crawl10k        # optional benchmark regexp, run once
 #         bench-packages: ./kit/crawl
 name: ci-go
@@ -21,6 +22,10 @@ on:
         default: '["ubuntu-latest"]'
       style:
         description: Check the writing rules (no em dashes, no comma before "and" or "but") with scripts/check-style.py.
+        type: boolean
+        default: false
+      pin-check:
+        description: Fail when a third-party action in .github/workflows isn't pinned to a full commit SHA. Off by default so callers can pin their workflows first; turn it on once they are pinned.
         type: boolean
         default: false
       kit-pin-check:
@@ -89,7 +94,7 @@ jobs:
         if: runner.os == 'Linux' && hashFiles('.github/workflows/*.yml', '.github/workflows/*.yaml') != ''
         run: go run "$ACTIONLINT"
       - name: pinned actions
-        if: runner.os == 'Linux' && hashFiles('.github/workflows/*.yml', '.github/workflows/*.yaml') != ''
+        if: runner.os == 'Linux' && inputs.pin-check && hashFiles('.github/workflows/*.yml', '.github/workflows/*.yaml') != ''
         # Every third-party action must name a full commit SHA. Local actions
         # (./) and the shared RhythmShahriar/.github workflows are exempt: the
         # release signing identity names release-go.yml@refs/heads/master, so
