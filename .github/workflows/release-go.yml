@@ -23,7 +23,11 @@
 # (SLSA build provenance) for checksums.txt, every archive, SBOM and Linux
 # package, so anyone with gh can verify without cosign:
 #   gh attestation verify checksums.txt --repo RhythmShahriar/<repo> \
-#     --signer-workflow RhythmShahriar/.github/.github/workflows/release-go.yml
+#     --signer-workflow RhythmShahriar/.github/.github/workflows/release-go.yml \
+#     --source-ref refs/tags/v<version> --deny-self-hosted-runners
+# Always pass --source-ref: a snapshot dry run dispatched from a branch is
+# attested by this same workflow, so without it a file built from any
+# branch would verify too.
 #
 # Package managers: a caller that publishes a Homebrew cask, Scoop manifest
 # or winget pull request passes a token that can push to those repositories:
