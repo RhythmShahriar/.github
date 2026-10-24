@@ -7,3 +7,23 @@ on:
 jobs:
   commitlint:
     uses: ./.github/workflows/commitlint.yml
+  pinned-actions:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: pinned actions
+        # The shared workflows must pin every action they use to a full
+        # commit SHA, as they ask of the repositories that call them.
+        run: |
+          bad=$(grep -nE '^[[:space:]-]*uses:' .github/workflows/*.y*ml \
+            | grep -vE 'uses:[[:space:]]*"?(\./|RhythmShahriar/\.github/)' \
+            | grep -vE '@[0-9a-f]{40}"?([[:space:]]|$)' || true)
+          if [ -n "$bad" ]; then
+            echo "These uses: lines don't pin a 40-hex commit SHA:"
+            echo "$bad"
+            exit 1
+          fi
