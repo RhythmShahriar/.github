@@ -20,10 +20,17 @@
 # reusable workflow that asks for more than its caller allows.
 #
 # Besides the cosign bundle, the release gets GitHub artifact attestations
-# (SLSA build provenance) for checksums.txt, every archive and SBOM, so anyone
-# with gh can verify without cosign:
+# (SLSA build provenance) for checksums.txt, every archive, SBOM and Linux
+# package, so anyone with gh can verify without cosign:
 #   gh attestation verify checksums.txt --repo RhythmShahriar/<repo> \
 #     --signer-workflow RhythmShahriar/.github/.github/workflows/release-go.yml
+#
+# Package managers: a caller that publishes a Homebrew cask, Scoop manifest
+# or winget pull request passes a token that can push to those repositories:
+#       secrets:
+#         TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+# Its .goreleaser.yaml should skip those publishers when the token is empty
+# (skip_upload: '{{ if not (index .Env "TAP_GITHUB_TOKEN") }}true{{ end }}').
 #
 # snapshot: true builds, signs and attests a snapshot (goreleaser release
 # --snapshot) without publishing anything, for a dry run from a
@@ -39,6 +46,10 @@ on:
         description: Build a snapshot and skip publishing (a dry run).
         type: boolean
         default: false
+    secrets:
+      TAP_GITHUB_TOKEN:
+        description: Token that can push to the Homebrew tap, Scoop bucket and winget-pkgs fork. Without it GoReleaser skips those publishers.
+        required: false
 permissions:
   contents: write
   id-token: write # keyless cosign signing and attestations
@@ -73,6 +84,7 @@ jobs:
           args: release --clean ${{ inputs.snapshot && '--snapshot --skip=publish' || '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
           GOWORK: "off"
       # After GoReleaser, so the subjects are the exact files it published.
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
@@ -82,3 +94,6 @@ jobs:
             dist/*.tar.gz
             dist/*.zip
             dist/*.sbom.json
+            dist/*.deb
+            dist/*.rpm
+            dist/*.apk
