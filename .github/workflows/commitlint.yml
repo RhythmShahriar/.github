@@ -14,7 +14,10 @@ permissions:
   contents: read
 jobs:
   commitlint:
-    if: github.event_name == 'pull_request'
+    # Dependabot writes its own titles ("bump ... in the go group across 1
+    # directory"), which run past the 72-character header limit. Its PRs are
+    # skipped; a skipped job still satisfies a required check.
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
